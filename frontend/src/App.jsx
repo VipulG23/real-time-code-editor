@@ -14,43 +14,32 @@ const App = () => {
   const [copySuccess, setCopySuccess] = useState("");
   const [users, setUsers] = useState([]);
   const [typing, setTyping] = useState("");
+  const [outPut, setOutPut] = useState("");
+  const [version] = useState("*");
 
   useEffect(() => {
-    socket.on("userJoined", (users) => {
-      setUsers(users);
-    });
-
-    socket.on("codeUpdate", (newCode) => {
-      setCode(newCode);
-    });
-
+    socket.on("userJoined", setUsers);
+    socket.on("codeUpdate", setCode);
     socket.on("userTyping", (user) => {
-      setTyping(`${user.slice(0, 8)}... is Typing`);
+      setTyping(`${user.slice(0, 8)}... is typing`);
       setTimeout(() => setTyping(""), 2000);
     });
-
-    socket.on("languageUpdate", (newLanguage) => {
-      setLanguage(newLanguage);
-    });
+    socket.on("languageUpdate", setLanguage);
+    socket.on("codeResponse", (response) => setOutPut(response.run.output));
 
     return () => {
       socket.off("userJoined");
       socket.off("codeUpdate");
       socket.off("userTyping");
       socket.off("languageUpdate");
+      socket.off("codeResponse");
     };
   }, []);
 
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      socket.emit("leaveRoom");
-    };
-
+    const handleBeforeUnload = () => socket.emit("leaveRoom");
     window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
   const joinRoom = () => {
@@ -87,14 +76,18 @@ const App = () => {
     socket.emit("languageChange", { roomId, language: newLanguage });
   };
 
+  const runCode = () => {
+    socket.emit("compileCode", { code, roomId, language, version });
+  };
+
   if (!joined) {
     return (
       <div className="join-container">
         <div className="join-form">
-          <h1>Join Code Room</h1>
+          <h1>Join a Code Room</h1>
           <input
             type="text"
-            placeholder="Room Id"
+            placeholder="Room ID"
             value={roomId}
             onChange={(e) => setRoomId(e.target.value)}
           />
@@ -104,7 +97,7 @@ const App = () => {
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
           />
-          <button onClick={joinRoom}>Join Room</button>
+          <button onClick={joinRoom}>Enter Room</button>
         </div>
       </div>
     );
@@ -114,16 +107,16 @@ const App = () => {
     <div className="editor-container">
       <div className="sidebar">
         <div className="room-info">
-          <h2>Code Room: {roomId}</h2>
+          <h2>Room: {roomId}</h2>
           <button onClick={copyRoomId} className="copy-button">
-            Copy Id
+            Copy ID
           </button>
           {copySuccess && <span className="copy-success">{copySuccess}</span>}
         </div>
-        <h3>Users in Room:</h3>
+        <h3>Users:</h3>
         <ul>
-          {users.map((user, index) => (
-            <li key={index}>{user.slice(0, 8)}...</li>
+          {users.map((user, idx) => (
+            <li key={idx}>{user.slice(0, 8)}...</li>
           ))}
         </ul>
         <p className="typing-indicator">{typing}</p>
@@ -144,8 +137,7 @@ const App = () => {
 
       <div className="editor-wrapper">
         <Editor
-          height={"100%"}
-          defaultLanguage={language}
+          height={"60%"}
           language={language}
           value={code}
           onChange={handleCodeChange}
@@ -153,7 +145,17 @@ const App = () => {
           options={{
             minimap: { enabled: false },
             fontSize: 14,
+            fontFamily: "Fira Code, monospace",
           }}
+        />
+        <button className="run-btn" onClick={runCode}>
+          Execute
+        </button>
+        <textarea
+          className="output-console"
+          value={outPut}
+          readOnly
+          placeholder="Output will appear here..."
         />
       </div>
     </div>

@@ -1,7 +1,7 @@
+import axios from "axios";
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
-import path from "path";
 
 const app = express();
 
@@ -66,6 +66,24 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("languageUpdate", language);
   });
 
+  socket.on("compileCode",async({code,roomId,language,version}) =>{
+    if(rooms.has(roomId)){
+      const room = rooms.get(roomId);
+      const response = await axios.post("https://emkc.org/api/v2/piston/execute",{
+        language,
+        version,
+        files:[
+         {
+           content : code,
+        }
+        ]
+      })
+
+      room.output = response.data.run.output
+      io.to(roomId).emit("codeResponse",response.data);
+    }
+  })
+
   socket.on("disconnect", () => {
     if (currentRoom && currentUser) {
       rooms.get(currentRoom).delete(currentUser);
@@ -77,13 +95,7 @@ io.on("connection", (socket) => {
 
 const port = process.env.PORT || 5000;
 
-const __dirname = path.resolve();
 
-app.use(express.static(path.join(__dirname, "/frontend/dist")));
-
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "frontend", "dist", "index.html"));
-});
 
 server.listen(port, () => {
   console.log("server is working on port 5000");
