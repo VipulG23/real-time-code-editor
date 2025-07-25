@@ -5,7 +5,7 @@ import Editor from "@monaco-editor/react";
 import { v4 as uuid } from "uuid";
 import { motion, AnimatePresence } from "framer-motion";
 
-const socket = io("http://localhost:5000");
+const socket = io("https://real-time-code-editor-backend-lw2q.onrender.com");
 
 const App = () => {
   const [joined, setJoined] = useState(false);
