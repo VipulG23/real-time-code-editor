@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
+import { v4 as uuid } from "uuid";
+import { motion, AnimatePresence } from "framer-motion";
 
-const socket = io("https://real-time-code-editor-1-r1c8.onrender.com");
+const socket = io("http://localhost:5000");
 
 const App = () => {
   const [joined, setJoined] = useState(false);
@@ -15,17 +17,29 @@ const App = () => {
   const [users, setUsers] = useState([]);
   const [typing, setTyping] = useState("");
   const [outPut, setOutPut] = useState("");
-  const [version] = useState("*");
+  const [version, setVersion] = useState("*");
 
   useEffect(() => {
-    socket.on("userJoined", setUsers);
-    socket.on("codeUpdate", setCode);
+    socket.on("userJoined", (users) => {
+      setUsers(users);
+    });
+
+    socket.on("codeUpdate", (newCode) => {
+      setCode(newCode);
+    });
+
     socket.on("userTyping", (user) => {
-      setTyping(`${user.slice(0, 8)}... is typing`);
+      setTyping(`${user.slice(0, 8)}... is Typing`);
       setTimeout(() => setTyping(""), 2000);
     });
-    socket.on("languageUpdate", setLanguage);
-    socket.on("codeResponse", (response) => setOutPut(response.run.output));
+
+    socket.on("languageUpdate", (newLanguage) => {
+      setLanguage(newLanguage);
+    });
+
+    socket.on("codeResponse", (response) => {
+      setOutPut(response.run.output);
+    });
 
     return () => {
       socket.off("userJoined");
@@ -37,9 +51,15 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    const handleBeforeUnload = () => socket.emit("leaveRoom");
+    const handleBeforeUnload = () => {
+      socket.emit("leaveRoom");
+    };
+
     window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
   }, []);
 
   const joinRoom = () => {
@@ -76,28 +96,42 @@ const App = () => {
     socket.emit("languageChange", { roomId, language: newLanguage });
   };
 
+  const [userInput, setUserInput] = useState("");
+
   const runCode = () => {
-    socket.emit("compileCode", { code, roomId, language, version });
+    socket.emit("compileCode", {
+      code,
+      roomId,
+      language,
+      version,
+      input: userInput,
+    });
+  };
+
+  const createRoomId = () => {
+    const roomId = uuid();
+    setRoomId(roomId);
   };
 
   if (!joined) {
     return (
       <div className="join-container">
         <div className="join-form">
-          <h1>Join a Code Room</h1>
+          <h1>Join Code Room</h1>
           <input
             type="text"
-            placeholder="Room ID"
+            placeholder="Room Id"
             value={roomId}
             onChange={(e) => setRoomId(e.target.value)}
           />
+          <button onClick={createRoomId}>Create id</button>
           <input
             type="text"
             placeholder="Your Name"
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
           />
-          <button onClick={joinRoom}>Enter Room</button>
+          <button onClick={joinRoom}>Join Room</button>
         </div>
       </div>
     );
@@ -107,16 +141,16 @@ const App = () => {
     <div className="editor-container">
       <div className="sidebar">
         <div className="room-info">
-          <h2>Room: {roomId}</h2>
+          <h2>Code Room: {roomId}</h2>
           <button onClick={copyRoomId} className="copy-button">
-            Copy ID
+            Copy Id
           </button>
           {copySuccess && <span className="copy-success">{copySuccess}</span>}
         </div>
-        <h3>Users:</h3>
+        <h3>Users in Room:</h3>
         <ul>
-          {users.map((user, idx) => (
-            <li key={idx}>{user.slice(0, 8)}...</li>
+          {users.map((user, index) => (
+            <li key={index}>{user.slice(0, 8)}...</li>
           ))}
         </ul>
         <p className="typing-indicator">{typing}</p>
@@ -138,6 +172,7 @@ const App = () => {
       <div className="editor-wrapper">
         <Editor
           height={"60%"}
+          defaultLanguage={language}
           language={language}
           value={code}
           onChange={handleCodeChange}
@@ -145,8 +180,13 @@ const App = () => {
           options={{
             minimap: { enabled: false },
             fontSize: 14,
-            fontFamily: "Fira Code, monospace",
           }}
+        />
+        <textarea
+          className="input-console"
+          value={userInput}
+          onChange={(e) => setUserInput(e.target.value)}
+          placeholder="Enter input here..."
         />
         <button className="run-btn" onClick={runCode}>
           Execute
@@ -155,7 +195,7 @@ const App = () => {
           className="output-console"
           value={outPut}
           readOnly
-          placeholder="Output will appear here..."
+          placeholder="Output will appear here ..."
         />
       </div>
     </div>
