@@ -93,27 +93,11 @@ Frontend
 
 npm start
 
-🧩 How It Works (High-Level Architecture)
-
-Monaco Editor captures user code changes.
-
-Socket.IO sends changes to the server using WebSockets.
-
-Server broadcasts updates to all users in the same room.
-
-Each client's editor updates instantly, maintaining real-time sync.
-
-Code execution requests are sent to the backend for safe processing.
-
-Output is returned and displayed inside the editor.
-
-📸 Screenshots (Optional)
-
-Add your UI screenshots here if available.
-
 🌍 Live Demo
 
+
 🔗 Hosted Link: https://real-time-code-editor-2-0n6h.onrender.com/
+
 🔗 GitHub Repo: https://github.com/VipulG23/real-time-code-editor
 
 🤝 Contributing
